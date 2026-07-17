@@ -1,0 +1,13 @@
+#!/bin/sh
+
+killall -9 appguardd 2>/dev/null
+
+if [ -f /var/jb/Library/LaunchDaemons/com.axs.appguardd.plist ]; then
+    /var/jb/bin/launchctl unload /var/jb/Library/LaunchDaemons/com.axs.appguardd.plist 2>/dev/null
+    /var/jb/bin/launchctl load /var/jb/Library/LaunchDaemons/com.axs.appguardd.plist
+elif [ -f /Library/LaunchDaemons/com.axs.appguardd.plist ]; then
+    launchctl unload /Library/LaunchDaemons/com.axs.appguardd.plist 2>/dev/null
+    launchctl load /Library/LaunchDaemons/com.axs.appguardd.plist
+fi
+
+exit 0

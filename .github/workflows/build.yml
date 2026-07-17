@@ -1,0 +1,89 @@
+name: Build AppGuard
+
+# 触发条件：当你推送到 main 分支，或者在网页端手动点击运行按钮时触发
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build iOS Tweak
+    runs-on: macos-14
+    env:
+      # 指定 Theos 的环境变量路径为当前工作目录下的 theos 文件夹
+      THEOS: ${{ github.workspace }}/theos 
+
+    steps:
+      - name: 📥 检出代码 (Checkout Repository)
+        uses: actions/checkout@v4
+
+      - name: 🧾 预设版本 Bump package version
+        run: |
+          VERSION_PREFIX="5.2.0"
+          VERSION_BASE=0
+          VERSION="${VERSION_PREFIX}-$((VERSION_BASE + ${{ github.run_number }}))"
+
+          echo "Using version: $VERSION"
+          sed -i '' "s/^Version: .*/Version: ${VERSION}/" control
+          echo "PACKAGE_VERSION=${VERSION}" >> $GITHUB_ENV
+
+      - name: ⚙️ 安装依赖 (Install Dependencies)
+        run: |
+          echo "安装打包和签名工具..."
+          brew install ldid dpkg
+
+      - name: 🛠️ 配置 Theos 环境 (Setup Roothide Theos)
+        run: |
+          echo "Cloning Roothide Theos fork..."
+          # 使用 Roothide 官方分支的 Theos，原生支持三种越狱环境编译
+          git clone --recursive https://github.com/roothide/theos.git $THEOS
+
+      - name: 📦 下载 iOS SDK (Setup iOS SDKs)
+        run: |
+          echo "Cloning iOS SDKs..."
+          rm -rf $THEOS/sdks
+          # 下载最新的适配 SDK，确保 iOS 14-17 的头文件能够被正确链接
+          git clone https://github.com/theos/sdks.git $THEOS/sdks
+
+      - name: 🧾 读取软件包版本
+        run: |
+          VERSION=$(awk -F': ' '/^Version:/ {print $2; exit}' control)
+          echo "PACKAGE_VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: 🚀 运行编译脚本 (Run build.sh)
+        run: |
+          # 赋予执行权限
+          chmod +x build.sh
+          # 修复 postinst 权限问题（Theos 打包要求维护脚本权限必须是 0755）
+          chmod 0755 layout/DEBIAN/postinst
+          # 执行编译脚本（注意：Theos 编译插件通常不需要 sudo，普通用户权限即可，更安全）
+          ./build.sh
+
+      - name: ✅ 创建 Release
+        if: (github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')) || github.event_name == 'workflow_dispatch'
+        #if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')  //手动触发时，不创建 Release
+        uses: softprops/action-gh-release@v2
+        with:
+          token: ${{ github.token }}
+          tag_name: v${{ env.PACKAGE_VERSION }}
+          name: AppGuard v${{ env.PACKAGE_VERSION }}
+          files: ${{ github.workspace }}/packages/*.deb
+          overwrite_files: false
+          fail_on_unmatched_files: true
+
+      - name: ✅ Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: AppGuard
+          path: packages/*.deb
+          if-no-files-found: error

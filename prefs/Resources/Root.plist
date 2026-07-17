@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>items</key>
+    <array>
+        <dict>
+            <key>cell</key> <string>PSGroupCell</string>
+            <key>label</key> <string>基本设置</string>
+        </dict>
+        <dict>
+            <key>cell</key> <string>PSSwitchCell</string>
+            <key>default</key> <false/>
+            <key>defaults</key> <string>com.axs.appguard</string>
+            <key>key</key> <string>Enabled</string>
+            <key>label</key> <string>启用插件</string>
+        </dict>
+        <dict>
+            <key>cell</key> <string>PSButtonCell</string>
+            <key>label</key> <string>进程排序</string>
+            <key>action</key> <string>sortProcessList</string>
+        </dict>
+
+        <dict>
+            <key>cell</key> <string>PSGroupCell</string>
+            <key>label</key> <string>进程列表</string>
+        </dict>
+        <dict>
+            <key>cell</key> <string>PSButtonCell</string>
+            <key>label</key> <string>添加进程</string>
+            <key>action</key> <string>addNewProcess</string>
+        </dict>
+
+        <dict>
+            <key>cell</key> <string>PSGroupCell</string>
+            <key>label</key> <string>日志记录</string>
+        </dict>
+        <dict>
+            <key>cell</key> <string>PSButtonCell</string>
+            <key>label</key> <string>查看日志</string>
+            <key>action</key> <string>showLog</string>
+        </dict>
+        <dict>
+            <key>cell</key> <string>PSButtonCell</string>
+            <key>label</key> <string>清空日志</string>
+            <key>action</key> <string>clearLog</string>
+        </dict>
+    </array>
+    <key>title</key>
+    <string>AppGuard</string>
+</dict>
+</plist>
