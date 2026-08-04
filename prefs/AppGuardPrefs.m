@@ -1544,7 +1544,7 @@
 - (void)openSileoRepo:(PSSpecifier *)specifier { [self openSileoRepo]; }
 - (void)openTelegramChannel { [self openURLString:@"https://t.me/wxfx8"]; }
 - (void)openTelegramChannel:(PSSpecifier *)specifier { [self openTelegramChannel]; }
-- (void)openQQGroup { [self openURLString:@"http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=b9yIV3X8xKi3ZZUC7YXIr1YasKOzjYnm&authKey=ReN7wx79FV6Y4EIowsWSljNRUTSaGfgwWlmRzuvpWpBxl%2BCEKz%2BMNP3JePx1mMQ8&noverify=0&group_code=1001525693"]; }
+- (void)openQQGroup { [self openURLString:@"http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=avGAlBoo9Bn1AAt4ePAbFGYZAnFksKjn&authKey=PWtwKJ7Jtbi4AOr5rxrtm1Jyc0nR6IOV%2Fo9ucX6d68CKyVAyaaGjmE%2FJHOUNfyAQ&noverify=0&group_code=678055716"]; }
 - (void)openQQGroup:(PSSpecifier *)specifier { [self openQQGroup]; }
 
 @end
