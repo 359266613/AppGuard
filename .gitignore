@@ -1,0 +1,11 @@
+.codebuddy/
+.susuocr_extract/
+*.deb
+*.md
+*.swift
+*.ips
+*.log
+classdump/
+*.py
+*.dylib
+16.5-API/
