@@ -2,7 +2,7 @@ DEBUG = 0
 FINALPACKAGE = 1
 
 # 强制使用 14.5 SDK，避免最新的 Xcode SDK 编译 arm64e 导致 iOS 14 闪退！
-TARGET := iphone:clang:15.6:14.5
+TARGET := iphone:clang:16.5:14.5
 ARCHS = arm64 arm64e
 INSTALL_TARGET_PROCESSES = SpringBoard Preferences
 
