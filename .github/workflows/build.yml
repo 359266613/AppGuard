@@ -1,89 +1,114 @@
-name: Build AppGuard
+name: Build Package
 
-# 触发条件：当你推送到 main 分支，或者在网页端手动点击运行按钮时触发
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
       - master
-  pull_request:
-    branches:
-      - main
-      - master
-  workflow_dispatch:
 
 permissions:
   contents: write
 
+env:
+  HOMEBREW_NO_AUTO_UPDATE: 1
+  HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK: 1
+  THEOS: ${{ github.workspace }}/theos-roothide
+
 jobs:
   build:
-    name: Build iOS Tweak
+    name: Build (${{ matrix.build_variant }})
     runs-on: macos-14
-    env:
-      # 指定 Theos 的环境变量路径为当前工作目录下的 theos 文件夹
-      THEOS: ${{ github.workspace }}/theos 
+    outputs:
+      package_version: ${{ steps.bump.outputs.package_version }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+#          - build_variant: rootful
+#            package_scheme: ""
+          - build_variant: rootless
+            package_scheme: rootless
+#          - build_variant: roothide
+#            package_scheme: roothide
 
     steps:
-      - name: 📥 检出代码 (Checkout Repository)
-        uses: actions/checkout@v4
+    - name: Setup Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: '15.4'
 
-      - name: 🧾 预设版本 Bump package version
-        run: |
-          VERSION_PREFIX="5.2.0"
-          VERSION_BASE=0
-          VERSION="${VERSION_PREFIX}-$((VERSION_BASE + ${{ github.run_number }}))"
+    - name: Checkout
+      uses: actions/checkout@v4
 
-          echo "Using version: $VERSION"
-          sed -i '' "s/^Version: .*/Version: ${VERSION}/" control
-          echo "PACKAGE_VERSION=${VERSION}" >> $GITHUB_ENV
+    - name: Setup Environment
+      run: |
+        echo "$THEOS/bin" >> "$GITHUB_PATH"
+        echo "THEOS=$THEOS" >> $GITHUB_ENV
+        echo "THEOS_IGNORE_PARALLEL_BUILDING_NOTICE=yes" >> $HOME/.theosrc
 
-      - name: ⚙️ 安装依赖 (Install Dependencies)
-        run: |
-          echo "安装打包和签名工具..."
-          brew install ldid dpkg
+    - name: Bump Package Version
+      id: bump
+      run: |
+        VERSION_PREFIX="5.2.0"
+        VERSION_BASE=0    
+        VERSION="${VERSION_PREFIX}-$((VERSION_BASE + ${{ github.run_number }}))"
+        echo "Using version: $VERSION"
+        sed -i '' "s/^Version: .*/Version: ${VERSION}/" control
+        echo "package_version=${VERSION}" >> $GITHUB_OUTPUT
 
-      - name: 🛠️ 配置 Theos 环境 (Setup Roothide Theos)
-        run: |
-          echo "Cloning Roothide Theos fork..."
-          # 使用 Roothide 官方分支的 Theos，原生支持三种越狱环境编译
-          git clone --recursive https://github.com/roothide/theos.git $THEOS
+    - name: Checkout Theos (RootHide)
+      uses: actions/checkout@v4
+      with:
+        repository: roothide/theos
+        path: theos-roothide
+        submodules: recursive
 
-      - name: 📦 下载 iOS SDK (Setup iOS SDKs)
-        run: |
-          echo "Cloning iOS SDKs..."
-          rm -rf $THEOS/sdks
-          # 下载最新的适配 SDK，确保 iOS 14-17 的头文件能够被正确链接
-          git clone https://github.com/theos/sdks.git $THEOS/sdks
+    - name: Install iOS SDK (iPhoneOS16.5)
+      run: |
+        set -euo pipefail
+        mkdir -p "$THEOS/sdks"
+        if [ -d "$THEOS/sdks/iPhoneOS16.5.sdk" ]; then
+          echo "iPhoneOS16.5.sdk already present"
+          exit 0
+        fi
+        rm -rf /tmp/theos-sdks
+        git clone --depth 1 --filter=blob:none --sparse https://github.com/theos/sdks.git /tmp/theos-sdks
+        git -C /tmp/theos-sdks sparse-checkout set iPhoneOS16.5.sdk
+        cp -R /tmp/theos-sdks/iPhoneOS16.5.sdk "$THEOS/sdks/"
+        ls -1 "$THEOS/sdks"
 
-      - name: 🧾 读取软件包版本
-        run: |
-          VERSION=$(awk -F': ' '/^Version:/ {print $2; exit}' control)
-          echo "PACKAGE_VERSION=$VERSION" >> "$GITHUB_ENV"
+    - name: Install Theos dependencies
+      run: |
+        # dpkg 提供 dpkg-deb，make package 生成 .deb 需要它
+        brew install ldid dpkg xz
+        echo "$(brew --prefix)/bin" >> "$GITHUB_PATH"
 
-      - name: 🚀 运行编译脚本 (Run build.sh)
-        run: |
-          # 赋予执行权限
-          chmod +x build.sh
-          # 修复 postinst 权限问题（Theos 打包要求维护脚本权限必须是 0755）
-          chmod 0755 layout/DEBIAN/postinst
-          # 执行编译脚本（注意：Theos 编译插件通常不需要 sudo，普通用户权限即可，更安全）
-          ./build.sh
+    - name: Build Package
+      run: |
+        export THEOS="$GITHUB_WORKSPACE/theos-roothide"
+        SCHEME="${{ matrix.package_scheme }}"
+        if [ -n "$SCHEME" ]; then
+          export THEOS_PACKAGE_SCHEME="$SCHEME"
+        fi
+        make package
+        echo "=== .deb files ==="
+        find . -name "*.deb" -type f 2>/dev/null
 
-      - name: ✅ 创建 Release
-        if: (github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')) || github.event_name == 'workflow_dispatch'
-        #if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')  //手动触发时，不创建 Release
-        uses: softprops/action-gh-release@v2
-        with:
-          token: ${{ github.token }}
-          tag_name: v${{ env.PACKAGE_VERSION }}
-          name: AppGuard v${{ env.PACKAGE_VERSION }}
-          files: ${{ github.workspace }}/packages/*.deb
-          overwrite_files: false
-          fail_on_unmatched_files: true
+    - name: Upload Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: packages-${{ matrix.build_variant }}
+        path: |
+          ./packages/*.deb
+        if-no-files-found: error
 
-      - name: ✅ Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: AppGuard
-          path: packages/*.deb
-          if-no-files-found: error
+    - name: Create Release
+      if: (github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')) || github.event_name == 'workflow_dispatch'
+      uses: softprops/action-gh-release@v2
+      with:
+        token: ${{ github.token }}
+        tag_name: v${{ steps.bump.outputs.package_version }}
+        name: AppGuard v${{ steps.bump.outputs.package_version }}
+        files: |
+          ./packages/*.deb
