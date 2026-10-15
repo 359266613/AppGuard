@@ -1,4 +1,5 @@
-TARGET := iphone:clang:15.6:14.5
+# Match the SDK installed by CI; 14.5 is the deployment target, not the SDK.
+TARGET := iphone:clang:16.5:14.5
 ARCHS = arm64 arm64e
 
 include $(THEOS)/makefiles/common.mk

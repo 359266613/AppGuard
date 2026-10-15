@@ -1,4 +1,4 @@
-# 同样强制使用 14.5 SDK
+# Match the root project and CI SDK (16.5); deploy to iOS 14.5 and later.
 TARGET := iphone:clang:16.5:14.5
 ARCHS = arm64 arm64e          
 
